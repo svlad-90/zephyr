@@ -159,3 +159,15 @@ It is expected to be used with special application performing Xen Domain-0/Dom0 
    DT application overlay with values provided on the Xen boot, because
    normally Xen will update DT for the target Kernel, but this is not possible
    in case of Zephyr. More details described in :ref:`xen_dom0`.
+
+XEN DomD with HW passthrough
+============================
+
+The Raspberry Pi 5 platform can be used to run as Xen Zephyr DomD with RPI 5 HW support.
+For such purposes the ``rpi_5_xen_domd`` snippet can be used.
+
+Run the command below as an example of RPI 5 Zephyr build as DomD:
+
+.. code-block:: bash
+
+   west build -b xenvm -S rpi_5_xen_domd samples/basic/blinky
