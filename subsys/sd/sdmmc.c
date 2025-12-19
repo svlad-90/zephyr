@@ -325,6 +325,15 @@ static int sdmmc_read_switch(struct sd_card *card)
 		LOG_DBG("CMD6 failed %d", ret);
 		return ret;
 	}
+
+	/*
+	 * The workaround to choose the proper UHS speed as tuning for SDR104 mode
+	 * is in the TODO state of development
+	 */
+	if (IS_ENABLED(CONFIG_BOARD_RPI_5)) {
+		status[13] &= ~UHS_SDR104_BUS_SPEED;
+		LOG_DBG("Disabled SDR104 bus speed");
+	}
 	/*
 	 * See table 4-11 and 4.3.10.4 of physical layer specification for
 	 * bit definitions. Note that response is big endian, so index 13 will
