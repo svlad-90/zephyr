@@ -1,0 +1,9 @@
+sample:
+  name: Xen hypercall smoke
+  description: Dom0 smoke test for safe Xen hypercall wrappers
+common:
+  filter: CONFIG_XEN_DOM0
+tests:
+  sample.xen.hypercall_smoke:
+    integration_platforms:
+      - qemu_cortex_a53
