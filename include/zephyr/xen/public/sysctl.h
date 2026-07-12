@@ -20,6 +20,25 @@
 #include "xen.h"
 #include "domctl.h"
 
+/* Get trace buffers machine base address */
+/* XEN_SYSCTL_tbuf_op */
+struct xen_sysctl_tbuf_op {
+	/* IN variables */
+#define XEN_SYSCTL_TBUFOP_get_info     0
+#define XEN_SYSCTL_TBUFOP_set_cpu_mask 1
+#define XEN_SYSCTL_TBUFOP_set_evt_mask 2
+#define XEN_SYSCTL_TBUFOP_set_size     3
+#define XEN_SYSCTL_TBUFOP_enable       4
+#define XEN_SYSCTL_TBUFOP_disable      5
+	uint32_t cmd;
+	/* IN/OUT variables */
+	struct xenctl_bitmap cpu_mask;
+	uint32_t evt_mask;
+	/* OUT variables */
+	uint64_aligned_t buffer_mfn;
+	uint32_t size;  /* Also an IN variable! */
+};
+
 /*
  * Get physical information about the host machine
  */
@@ -168,6 +187,7 @@ struct xen_sysctl {
 #define XEN_SYSCTL_get_cpu_policy                29
 	uint32_t interface_version; /* XEN_SYSCTL_INTERFACE_VERSION */
 	union {
+		struct xen_sysctl_tbuf_op           tbuf_op;
 		struct xen_sysctl_physinfo          physinfo;
 		struct xen_sysctl_getdomaininfolist getdomaininfolist;
 		struct xen_sysctl_getcpuinfo        getcpuinfo;
