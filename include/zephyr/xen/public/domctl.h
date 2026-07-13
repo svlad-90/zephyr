@@ -52,14 +52,22 @@ struct xen_domctl_createdomain {
 #define XEN_DOMCTL_CDF_nested_virt	(1U << _XEN_DOMCTL_CDF_nested_virt)
 /* Should we expose the vPMU to the guest? */
 #define XEN_DOMCTL_CDF_vpmu		(1U << 7)
+#if CONFIG_XEN_DOMCTL_INTERFACE_VERSION >= 0x00000018
+/* Should we trap guest accesses to unmapped addresses? */
+#define XEN_DOMCTL_CDF_trap_unmapped_accesses	(1U << 8)
+#endif
 
 /* Max XEN_DOMCTL_CDF_* constant.  Used for ABI checking. */
+#if CONFIG_XEN_DOMCTL_INTERFACE_VERSION >= 0x00000018
+#define XEN_DOMCTL_CDF_MAX		XEN_DOMCTL_CDF_trap_unmapped_accesses
+#else
 #define XEN_DOMCTL_CDF_MAX		XEN_DOMCTL_CDF_vpmu
+#endif
 
 	uint32_t flags;
 
 #define _XEN_DOMCTL_IOMMU_no_sharept	0
-#define XEN_DOMCTL_IOMMU_no_sharep	(1U << _XEN_DOMCTL_IOMMU_no_sharept)
+#define XEN_DOMCTL_IOMMU_no_sharept	(1U << _XEN_DOMCTL_IOMMU_no_sharept)
 
 /* Max XEN_DOMCTL_IOMMU_* constant. Used for ABI checking. */
 #define XEN_DOMCTL_IOMMU_MAX		XEN_DOMCTL_IOMMU_no_sharept
@@ -82,6 +90,49 @@ struct xen_domctl_createdomain {
 #define XEN_DOMCTL_GRANT_version(v)	((v) & XEN_DOMCTL_GRANT_version_mask)
 
 	uint32_t grant_opts;
+
+#if CONFIG_XEN_DOMCTL_INTERFACE_VERSION >= 0x00000018
+	struct {
+/*
+ * Enable altp2m mixed mode.
+ *
+ * Note that 'mixed' mode has not been evaluated for safety from a security
+ * perspective.  Before using this mode in a security-critical environment,
+ * each subop should be evaluated for safety, with unsafe subops blacklisted in
+ * XSM.
+ */
+#define XEN_DOMCTL_ALTP2M_mixed		(1U)
+/* Enable altp2m external mode. */
+#define XEN_DOMCTL_ALTP2M_external	(2U)
+/* Enable altp2m limited mode. */
+#define XEN_DOMCTL_ALTP2M_limited	(3U)
+/* Altp2m mode signaling uses bits [0, 1]. */
+#define XEN_DOMCTL_ALTP2M_mode_mask	(0x3U)
+#define XEN_DOMCTL_ALTP2M_mode(m)	((m) & XEN_DOMCTL_ALTP2M_mode_mask)
+		uint16_t opts;
+
+		/* Number of altp2ms to permit. */
+		uint16_t nr;
+	} altp2m;
+#else
+/*
+ * Enable altp2m mixed mode.
+ *
+ * Note that 'mixed' mode has not been evaluated for safety from a security
+ * perspective.  Before using this mode in a security-critical environment,
+ * each subop should be evaluated for safety, with unsafe subops blacklisted in
+ * XSM.
+ */
+#define XEN_DOMCTL_ALTP2M_mixed		(1U)
+/* Enable altp2m external mode. */
+#define XEN_DOMCTL_ALTP2M_external	(2U)
+/* Enable altp2m limited mode. */
+#define XEN_DOMCTL_ALTP2M_limited	(3U)
+/* Altp2m mode signaling uses bits [0, 1]. */
+#define XEN_DOMCTL_ALTP2M_mode_mask	(0x3U)
+#define XEN_DOMCTL_ALTP2M_mode(m)	((m) & XEN_DOMCTL_ALTP2M_mode_mask)
+	uint32_t altp2m_opts;
+#endif
 
 	/* Per-vCPU buffer size in bytes.  0 to disable. */
 	uint32_t vmtrace_size;
@@ -501,6 +552,10 @@ struct xen_domctl {
 #define XEN_DOMCTL_get_paging_mempool_size	85
 #define XEN_DOMCTL_set_paging_mempool_size	86
 #endif
+#define XEN_DOMCTL_dt_overlay			87
+#define XEN_DOMCTL_gsi_permission		88
+#define XEN_DOMCTL_set_llc_colors		89
+#define XEN_DOMCTL_get_domain_state		90 /* stable interface */
 #define XEN_DOMCTL_gdbsx_guestmemio		1000
 #define XEN_DOMCTL_gdbsx_pausevcpu		1001
 #define XEN_DOMCTL_gdbsx_unpausevcpu		1002
