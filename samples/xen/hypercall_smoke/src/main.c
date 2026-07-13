@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <errno.h>
+
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/xen/dom0/domctl.h>
@@ -14,6 +16,8 @@
 #define DOMAININFO_MAX 8
 #define TBUF_TEST_EVT_MASK 0x0000ffffU
 #define TBUF_TEST_SIZE_PAGES 1U
+#define XEN_ERRNO_ENOSYS 38
+#define XEN_ERRNO_EOPNOTSUPP 95
 
 static int check_xen_version(void)
 {
@@ -219,6 +223,36 @@ static int check_sysctl_tbuf_ops(void)
 	return 0;
 }
 
+static int check_sysctl_cpu_hotplug(void)
+{
+	int ret;
+	struct xen_sysctl_cpu_hotplug hotplug = {
+		.cpu = 0,
+		.op = XEN_SYSCTL_CPU_HOTPLUG_ONLINE,
+	};
+
+	printk("xen_smoke: cpu_hotplug/online: START cmd=cpu_hotplug op=online "
+	       "cpu=%u request=probe_arch_support\n",
+	       hotplug.cpu);
+
+	ret = xen_sysctl_cpu_hotplug(&hotplug);
+	if (ret == -XEN_ERRNO_ENOSYS || ret == -XEN_ERRNO_EOPNOTSUPP) {
+		printk("xen_smoke: cpu_hotplug/online: SKIP ret=%d reason=unsupported\n",
+		       ret);
+		return 0;
+	}
+	if (ret < 0) {
+		printk("xen_smoke: xen_sysctl_cpu_hotplug(online cpu=%u) failed: %d\n",
+		       hotplug.cpu, ret);
+		return ret;
+	}
+
+	printk("xen_smoke: cpu_hotplug/online: PASS cpu=%u op=online ret=0\n",
+	       hotplug.cpu);
+
+	return 0;
+}
+
 static int check_sysctl_getdomaininfo(void)
 {
 	int ret;
@@ -276,6 +310,11 @@ int main(void)
 	}
 
 	ret = check_sysctl_tbuf_ops();
+	if (ret < 0) {
+		goto fail;
+	}
+
+	ret = check_sysctl_cpu_hotplug();
 	if (ret < 0) {
 		goto fail;
 	}
