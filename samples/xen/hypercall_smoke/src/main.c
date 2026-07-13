@@ -17,6 +17,7 @@
 #define TBUF_TEST_EVT_MASK 0x0000ffffU
 #define TBUF_TEST_SIZE_PAGES 1U
 #define XEN_ERRNO_ENOSYS 38
+#define XEN_ERRNO_EINVAL 22
 #define XEN_ERRNO_EOPNOTSUPP 95
 
 static int check_xen_version(void)
@@ -293,6 +294,40 @@ static int check_domctl_getdomaininfo(void)
 	return 0;
 }
 
+static int check_domctl_unbind_pt_irq(void)
+{
+	int ret;
+	uint32_t machine_irq = 32;
+	uint16_t spi = 33;
+
+	printk("xen_smoke: domctl/unbind_pt_irq: START cmd=unbind_pt_irq "
+	       "irq_type=spi machine_irq=%u spi=%u request=invalid_mapping_probe\n",
+	       machine_irq, spi);
+
+	ret = xen_domctl_unbind_pt_irq(0, machine_irq, PT_IRQ_TYPE_SPI,
+				       0, 0, 0, 0, spi);
+	if (ret == -XEN_ERRNO_ENOSYS || ret == -XEN_ERRNO_EOPNOTSUPP) {
+		printk("xen_smoke: domctl/unbind_pt_irq: SKIP ret=%d "
+		       "reason=unsupported\n",
+		       ret);
+		return 0;
+	}
+	if (ret == -XEN_ERRNO_EINVAL) {
+		printk("xen_smoke: domctl/unbind_pt_irq: PASS ret=%d "
+		       "expected_reject=machine_irq_spi_mismatch\n",
+		       ret);
+		return 0;
+	}
+	if (ret == 0) {
+		printk("xen_smoke: domctl/unbind_pt_irq: FAIL ret=0 "
+		       "expected_reject=machine_irq_spi_mismatch\n");
+		return -EINVAL;
+	}
+
+	printk("xen_smoke: xen_domctl_unbind_pt_irq failed: %d\n", ret);
+	return ret;
+}
+
 int main(void)
 {
 	int ret;
@@ -325,6 +360,11 @@ int main(void)
 	}
 
 	ret = check_domctl_getdomaininfo();
+	if (ret < 0) {
+		goto fail;
+	}
+
+	ret = check_domctl_unbind_pt_irq();
 	if (ret < 0) {
 		goto fail;
 	}
