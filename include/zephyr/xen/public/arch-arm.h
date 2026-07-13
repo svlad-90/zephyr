@@ -312,6 +312,14 @@ DEFINE_XEN_GUEST_HANDLE(vcpu_guest_context_t);
 
 #define XEN_DOMCTL_CONFIG_TEE_NONE	0
 #define XEN_DOMCTL_CONFIG_TEE_OPTEE	1
+#define XEN_DOMCTL_CONFIG_TEE_FFA	2
+
+#define XEN_DOMCTL_CONFIG_ARM_SCI_NONE		0
+#define XEN_DOMCTL_CONFIG_ARM_SCI_SCMI_SMC	1
+
+#define XEN_DOMCTL_CONFIG_ARM_V8R_EL1_MSA_NONE	0
+#define XEN_DOMCTL_CONFIG_ARM_V8R_EL1_MSA_PMSA	1
+#define XEN_DOMCTL_CONFIG_ARM_V8R_EL1_MSA_VMSA	2
 
 struct xen_arch_domainconfig {
 	/* IN/OUT */
@@ -349,6 +357,13 @@ struct xen_arch_domainconfig {
 	 *
 	 */
 	uint32_t clock_frequency;
+#if CONFIG_XEN_DOMCTL_INTERFACE_VERSION >= 0x00000018
+	/* IN */
+	uint8_t arm_sci_type;
+	/* IN */
+	uint8_t v8r_el1_msa;
+	uint16_t pad;
+#endif /* CONFIG_XEN_DOMCTL_INTERFACE_VERSION */
 };
 #endif /* CONFIG_XEN_DOM0 */
 

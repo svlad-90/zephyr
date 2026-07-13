@@ -53,6 +53,10 @@
 /* Max XEN_SYSCTL_PHYSCAP_* constant.  Used for ABI checking. */
 #define XEN_SYSCTL_PHYSCAP_MAX XEN_SYSCTL_PHYSCAP_gnttab_v2
 
+#if defined(CONFIG_ARM64) || defined(CONFIG_ARM)
+#define XEN_SYSCTL_PHYSCAP_ARM_SVE_MASK  (0x1FU)
+#endif
+
 struct xen_sysctl_physinfo {
 	uint32_t threads_per_core;
 	uint32_t cores_per_socket;
