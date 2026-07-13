@@ -57,6 +57,21 @@ int xen_sysctl_tbuf_op(struct xen_sysctl_tbuf_op *tbuf_op)
 	return ret;
 }
 
+int xen_sysctl_cpu_hotplug(struct xen_sysctl_cpu_hotplug *cpu_hotplug)
+{
+	xen_sysctl_t sysctl = {
+		.cmd = XEN_SYSCTL_cpu_hotplug,
+	};
+
+	if (!cpu_hotplug) {
+		return -EINVAL;
+	}
+
+	sysctl.u.cpu_hotplug = *cpu_hotplug;
+
+	return do_sysctl(&sysctl);
+}
+
 int xen_sysctl_getdomaininfo(struct xen_domctl_getdomaininfo *domaininfo,
 			     uint16_t first, uint16_t num)
 {

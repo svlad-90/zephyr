@@ -38,6 +38,17 @@ int xen_sysctl_physinfo(struct xen_sysctl_physinfo *info);
 int xen_sysctl_tbuf_op(struct xen_sysctl_tbuf_op *tbuf_op);
 
 /**
+ * @brief Performs a Xen CPU hotplug sysctl operation.
+ *
+ * @param[in] cpu_hotplug A pointer to a `struct xen_sysctl_cpu_hotplug` object
+ *                        that defines the physical CPU and hotplug operation.
+ *
+ * @return 0 on success, negative errno value on failure.
+ * @retval -EINVAL @p cpu_hotplug is ``NULL``.
+ */
+int xen_sysctl_cpu_hotplug(struct xen_sysctl_cpu_hotplug *cpu_hotplug);
+
+/**
  * @brief Retrieves information about Xen domains.
  *
  * @param[out] domaininfo A pointer to the `xen_domctl_getdomaininfo` structure

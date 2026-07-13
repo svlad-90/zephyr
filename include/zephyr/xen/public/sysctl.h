@@ -124,6 +124,21 @@ struct xen_sysctl_getcpuinfo {
 	uint32_t nr_cpus;
 };
 
+/* XEN_SYSCTL_cpu_hotplug */
+struct xen_sysctl_cpu_hotplug {
+	/* IN variables */
+	uint32_t cpu; /* Physical cpu. */
+
+	/* Single CPU enable/disable. */
+#define XEN_SYSCTL_CPU_HOTPLUG_ONLINE  0
+#define XEN_SYSCTL_CPU_HOTPLUG_OFFLINE 1
+
+	/* SMT enable/disable. */
+#define XEN_SYSCTL_CPU_HOTPLUG_SMT_ENABLE  2
+#define XEN_SYSCTL_CPU_HOTPLUG_SMT_DISABLE 3
+	uint32_t op; /* hotplug opcode */
+};
+
 struct xen_sysctl {
 	uint32_t cmd;
 #define XEN_SYSCTL_readconsole                    1
@@ -160,6 +175,7 @@ struct xen_sysctl {
 		struct xen_sysctl_physinfo          physinfo;
 		struct xen_sysctl_getdomaininfolist getdomaininfolist;
 		struct xen_sysctl_getcpuinfo        getcpuinfo;
+		struct xen_sysctl_cpu_hotplug       cpu_hotplug;
 		uint8_t                             pad[128];
 	} u;
 };
