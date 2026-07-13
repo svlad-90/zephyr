@@ -205,6 +205,28 @@ int xen_domctl_bind_pt_irq(int domid, uint32_t machine_irq, uint8_t irq_type, ui
 			   uint8_t device, uint8_t intx, uint8_t isa_irq, uint16_t spi);
 
 /**
+ * @brief Unbind a physical interrupt from a guest domain.
+ *
+ * Only ``PT_IRQ_TYPE_SPI`` is currently supported.
+ *
+ * @kconfig_dep{CONFIG_XEN_DOM0}
+ *
+ * @param domid Target domain identifier.
+ * @param machine_irq Machine IRQ number to unbind.
+ * @param irq_type Xen passthrough IRQ type.
+ * @param bus PCI bus number for PCI passthrough modes.
+ * @param device PCI device number for PCI passthrough modes.
+ * @param intx PCI INTx line for PCI passthrough modes.
+ * @param isa_irq ISA IRQ number for ISA passthrough modes.
+ * @param spi SPI number used with ``PT_IRQ_TYPE_SPI``.
+ *
+ * @return 0 on success, negative errno value on failure.
+ * @retval -ENOTSUP @p irq_type is not supported by the current implementation.
+ */
+int xen_domctl_unbind_pt_irq(int domid, uint32_t machine_irq, uint8_t irq_type, uint8_t bus,
+			     uint8_t device, uint8_t intx, uint8_t isa_irq, uint16_t spi);
+
+/**
  * @brief Set the maximum number of vCPUs for a domain.
  *
  * The parameter passed to XEN_DOMCTL_max_vcpus must match the value passed to
