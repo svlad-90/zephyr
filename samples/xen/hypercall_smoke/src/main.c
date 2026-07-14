@@ -17,13 +17,27 @@
 #define TBUF_TEST_EVT_MASK 0x0000ffffU
 #define TBUF_TEST_SIZE_PAGES 1U
 #define XEN_ERRNO_ENOSYS 38
+#define XEN_ERRNO_EBUSY 16
+#define XEN_ERRNO_EPERM 1
 #define XEN_ERRNO_EINVAL 22
 #define XEN_ERRNO_EOPNOTSUPP 95
+
+static const uint16_t test_pt_irq_spis[] = {
+	35, 36, 37, 38,
+	48, 49, 50, 51, 52, 53, 54, 55,
+	56, 57, 58, 59, 60, 61, 62, 63,
+	64, 65, 66, 67, 68, 69, 70, 71,
+	72, 73, 74, 75, 76, 77, 78, 79,
+};
 
 static int check_xen_version(void)
 {
 	int version;
+	int xenver;
 	char extra[XEN_EXTRAVERSION_LEN];
+
+	printk("xen_smoke: xen_version: START scenario=query Xen major/minor and "
+	       "extraversion through xen_version hypercall\n");
 
 	version = xen_version();
 	if (version < 0) {
@@ -32,6 +46,7 @@ static int check_xen_version(void)
 	}
 
 	printk("xen_smoke: Xen version %d.%d\n", version >> 16, version & 0xffff);
+	xenver = version;
 
 	version = xen_version_extraversion(extra, sizeof(extra));
 	if (version < 0) {
@@ -40,6 +55,8 @@ static int check_xen_version(void)
 	}
 
 	printk("xen_smoke: Xen extra version %s\n", extra);
+	printk("xen_smoke: xen_version: PASS version=%d.%d extraversion=%s\n",
+	       xenver >> 16, xenver & 0xffff, extra);
 
 	return 0;
 }
@@ -49,13 +66,17 @@ static int check_sysctl_physinfo(void)
 	int ret;
 	struct xen_sysctl_physinfo info;
 
+	printk("xen_smoke: sysctl/physinfo: START scenario=query host CPU and memory "
+	       "topology through XEN_SYSCTL_physinfo\n");
+
 	ret = xen_sysctl_physinfo(&info);
 	if (ret < 0) {
 		printk("xen_smoke: xen_sysctl_physinfo failed: %d\n", ret);
 		return ret;
 	}
 
-	printk("xen_smoke: physinfo cpus=%u max_cpu_id=%u total_pages=%llu free_pages=%llu\n",
+	printk("xen_smoke: sysctl/physinfo: PASS cpus=%u max_cpu_id=%u "
+	       "total_pages=%llu free_pages=%llu\n",
 	       info.nr_cpus, info.max_cpu_id,
 	       (unsigned long long)info.total_pages,
 	       (unsigned long long)info.free_pages);
@@ -131,7 +152,8 @@ static int check_sysctl_tbuf_ops(void)
 	struct xen_sysctl_tbuf_op info;
 	uint32_t original_evt_mask;
 
-	printk("xen_smoke: tbuf/get_info: START cmd=get_info request=trace_buffer_state\n");
+	printk("xen_smoke: tbuf/get_info: START scenario=query Xen trace buffer state "
+	       "with XEN_SYSCTL_TBUFOP_get_info\n");
 	ret = tbuf_get_info(&info);
 	if (ret < 0) {
 		return ret;
@@ -142,7 +164,8 @@ static int check_sysctl_tbuf_ops(void)
 
 	original_evt_mask = info.evt_mask;
 
-	printk("xen_smoke: tbuf/set_evt_mask: START cmd=set_evt_mask request_evt_mask=0x%x "
+	printk("xen_smoke: tbuf/set_evt_mask: START scenario=change trace event mask, "
+	       "verify through get_info, then restore original mask request_evt_mask=0x%x "
 	       "original_evt_mask=0x%x\n",
 	       TBUF_TEST_EVT_MASK, original_evt_mask);
 	ret = tbuf_set_evt_mask(TBUF_TEST_EVT_MASK);
@@ -168,7 +191,8 @@ static int check_sysctl_tbuf_ops(void)
 	       "restored_evt_mask=0x%x\n",
 	       info.evt_mask, original_evt_mask);
 
-	printk("xen_smoke: tbuf/set_cpu_mask: START cmd=set_cpu_mask nr_bits=1 bitmap=0x1\n");
+	printk("xen_smoke: tbuf/set_cpu_mask: START scenario=limit tracing to CPU0 "
+	       "through XEN_SYSCTL_TBUFOP_set_cpu_mask nr_bits=1 bitmap=0x1\n");
 	ret = tbuf_set_cpu0_mask();
 	if (ret < 0) {
 		printk("xen_smoke: xen_sysctl_tbuf_op(set_cpu_mask) failed: %d\n", ret);
@@ -176,7 +200,8 @@ static int check_sysctl_tbuf_ops(void)
 	}
 	printk("xen_smoke: tbuf/set_cpu_mask: PASS accepted nr_bits=1 bitmap=0x1\n");
 
-	printk("xen_smoke: tbuf/set_size: START cmd=set_size requested_pages=%u\n",
+	printk("xen_smoke: tbuf/set_size: START scenario=configure trace buffer size "
+	       "when Xen has not allocated one yet requested_pages=%u\n",
 	       TBUF_TEST_SIZE_PAGES);
 	ret = tbuf_get_info(&info);
 	if (ret < 0) {
@@ -205,7 +230,7 @@ static int check_sysctl_tbuf_ops(void)
 		       (unsigned long long)info.buffer_mfn);
 	}
 
-	printk("xen_smoke: tbuf/disable: START cmd=disable request=stop_trace_writes\n");
+	printk("xen_smoke: tbuf/disable: START scenario=disable Xen trace buffer writes\n");
 	ret = tbuf_set_enabled(false);
 	if (ret < 0) {
 		printk("xen_smoke: xen_sysctl_tbuf_op(disable) failed: %d\n", ret);
@@ -213,7 +238,7 @@ static int check_sysctl_tbuf_ops(void)
 	}
 	printk("xen_smoke: tbuf/disable: PASS command_accepted ret=0\n");
 
-	printk("xen_smoke: tbuf/enable: START cmd=enable request=start_trace_writes\n");
+	printk("xen_smoke: tbuf/enable: START scenario=enable Xen trace buffer writes\n");
 	ret = tbuf_set_enabled(true);
 	if (ret < 0) {
 		printk("xen_smoke: xen_sysctl_tbuf_op(enable) failed: %d\n", ret);
@@ -232,7 +257,8 @@ static int check_sysctl_cpu_hotplug(void)
 		.op = XEN_SYSCTL_CPU_HOTPLUG_ONLINE,
 	};
 
-	printk("xen_smoke: cpu_hotplug/online: START cmd=cpu_hotplug op=online "
+	printk("xen_smoke: cpu_hotplug/online: START scenario=probe Xen CPU hotplug "
+	       "online operation for CPU0 cmd=cpu_hotplug op=online "
 	       "cpu=%u request=probe_arch_support\n",
 	       hotplug.cpu);
 
@@ -259,6 +285,9 @@ static int check_sysctl_getdomaininfo(void)
 	int ret;
 	struct xen_domctl_getdomaininfo domains[DOMAININFO_MAX];
 
+	printk("xen_smoke: sysctl/getdomaininfolist: START scenario=list Xen domains "
+	       "through XEN_SYSCTL_getdomaininfolist\n");
+
 	ret = xen_sysctl_getdomaininfo(domains, 0, ARRAY_SIZE(domains));
 	if (ret < 0) {
 		printk("xen_smoke: xen_sysctl_getdomaininfo failed: %d\n", ret);
@@ -273,6 +302,8 @@ static int check_sysctl_getdomaininfo(void)
 		       (unsigned long long)domains[i].tot_pages);
 	}
 
+	printk("xen_smoke: sysctl/getdomaininfolist: PASS domains=%d\n", ret);
+
 	return 0;
 }
 
@@ -281,51 +312,184 @@ static int check_domctl_getdomaininfo(void)
 	int ret;
 	xen_domctl_getdomaininfo_t info;
 
+	printk("xen_smoke: domctl/getdomaininfo: START scenario=query Dom0 domain "
+	       "metadata through XEN_DOMCTL_getdomaininfo\n");
+
 	ret = xen_domctl_getdomaininfo(0, &info);
 	if (ret < 0) {
 		printk("xen_smoke: xen_domctl_getdomaininfo failed: %d\n", ret);
 		return ret;
 	}
 
-	printk("xen_smoke: self domid=%u flags=0x%x max_vcpu_id=%u shared_info=0x%llx\n",
+	printk("xen_smoke: domctl/getdomaininfo: PASS domid=%u flags=0x%x "
+	       "max_vcpu_id=%u shared_info=0x%llx\n",
 	       info.domain, info.flags, info.max_vcpu_id,
 	       (unsigned long long)info.shared_info_frame);
 
 	return 0;
 }
 
-static int check_domctl_unbind_pt_irq(void)
+static int find_test_domu(domid_t *domid)
 {
 	int ret;
-	uint32_t machine_irq = 32;
-	uint16_t spi = 33;
+	struct xen_domctl_getdomaininfo domains[DOMAININFO_MAX];
 
-	printk("xen_smoke: domctl/unbind_pt_irq: START cmd=unbind_pt_irq "
-	       "irq_type=spi machine_irq=%u spi=%u request=invalid_mapping_probe\n",
-	       machine_irq, spi);
+	ret = xen_sysctl_getdomaininfo(domains, 0, ARRAY_SIZE(domains));
+	if (ret < 0) {
+		return ret;
+	}
 
-	ret = xen_domctl_unbind_pt_irq(0, machine_irq, PT_IRQ_TYPE_SPI,
-				       0, 0, 0, 0, spi);
-	if (ret == -XEN_ERRNO_ENOSYS || ret == -XEN_ERRNO_EOPNOTSUPP) {
-		printk("xen_smoke: domctl/unbind_pt_irq: SKIP ret=%d "
-		       "reason=unsupported\n",
-		       ret);
+	for (int i = 0; i < ret; i++) {
+		if (domains[i].domain != 0) {
+			*domid = domains[i].domain;
+			return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
+static int check_domctl_bind_unbind_pt_irq(void)
+{
+	int ret;
+	int last_ret = 0;
+	domid_t domid = DOMID_INVALID;
+	uint32_t machine_irq;
+	uint16_t spi;
+
+	printk("xen_smoke: domctl/bind_unbind_pt_irq: START scenario=temporarily "
+	       "move a real QEMU PCIe INTx or virtio-mmio GIC SPI mapping from Dom0 to DomU "
+	       "with XEN_DOMCTL_bind_pt_irq, then exercise XEN_DOMCTL_unbind_pt_irq "
+	       "and accept Xen ARM live-domain -EBUSY\n");
+
+	ret = find_test_domu(&domid);
+	if (ret == -ENOENT) {
+		printk("xen_smoke: domctl/bind_unbind_pt_irq: SKIP reason=no_domu\n");
 		return 0;
 	}
-	if (ret == -XEN_ERRNO_EINVAL) {
-		printk("xen_smoke: domctl/unbind_pt_irq: PASS ret=%d "
-		       "expected_reject=machine_irq_spi_mismatch\n",
-		       ret);
-		return 0;
-	}
-	if (ret == 0) {
-		printk("xen_smoke: domctl/unbind_pt_irq: FAIL ret=0 "
-		       "expected_reject=machine_irq_spi_mismatch\n");
-		return -EINVAL;
+	if (ret < 0) {
+		printk("xen_smoke: domctl/bind_unbind_pt_irq: FAIL find_domu_ret=%d\n", ret);
+		return ret;
 	}
 
-	printk("xen_smoke: xen_domctl_unbind_pt_irq failed: %d\n", ret);
-	return ret;
+	for (int i = 0; i < ARRAY_SIZE(test_pt_irq_spis); i++) {
+		domid_t restore_domid = DOMID_INVALID;
+
+		spi = test_pt_irq_spis[i];
+		machine_irq = spi;
+
+		printk("xen_smoke: domctl/bind_unbind_pt_irq: bind candidate=%d "
+		       "domid=%u machine_irq=%u spi=%u\n",
+		       i, domid, machine_irq, spi);
+		ret = xen_domctl_bind_pt_irq(domid, machine_irq, PT_IRQ_TYPE_SPI,
+					     0, 0, 0, 0, spi);
+		if (ret == -XEN_ERRNO_ENOSYS || ret == -XEN_ERRNO_EOPNOTSUPP) {
+			printk("xen_smoke: domctl/bind_unbind_pt_irq: SKIP ret=%d "
+			       "reason=unsupported\n",
+			       ret);
+			return 0;
+		}
+		if (ret == -XEN_ERRNO_EBUSY) {
+			printk("xen_smoke: domctl/bind_unbind_pt_irq: transfer_from_domu "
+			       "candidate=%d machine_irq=%u spi=%u\n",
+			       i, machine_irq, spi);
+			ret = xen_domctl_unbind_pt_irq(domid, machine_irq, PT_IRQ_TYPE_SPI,
+						       0, 0, 0, 0, spi);
+			if (ret < 0) {
+				printk("xen_smoke: domctl/bind_unbind_pt_irq: "
+				       "transfer_from_dom0 candidate=%d machine_irq=%u "
+				       "spi=%u\n",
+				       i, machine_irq, spi);
+				ret = xen_domctl_unbind_pt_irq(0, machine_irq,
+							       PT_IRQ_TYPE_SPI, 0, 0, 0,
+							       0, spi);
+			} else {
+				restore_domid = domid;
+			}
+			if (ret < 0) {
+				printk("xen_smoke: domctl/bind_unbind_pt_irq: candidate_skip "
+				       "unbind_owner_ret=%d machine_irq=%u spi=%u\n",
+				       ret, machine_irq, spi);
+				last_ret = ret;
+				continue;
+			}
+			if (restore_domid == DOMID_INVALID) {
+				restore_domid = 0;
+			}
+
+			ret = xen_domctl_bind_pt_irq(domid, machine_irq, PT_IRQ_TYPE_SPI,
+						     0, 0, 0, 0, spi);
+		}
+		if (ret == -XEN_ERRNO_EPERM || ret == -XEN_ERRNO_EINVAL) {
+			printk("xen_smoke: domctl/bind_unbind_pt_irq: candidate_skip "
+			       "bind_ret=%d domid=%u machine_irq=%u spi=%u\n",
+			       ret, domid, machine_irq, spi);
+			if (restore_domid != DOMID_INVALID) {
+				(void)xen_domctl_bind_pt_irq(restore_domid, machine_irq,
+							     PT_IRQ_TYPE_SPI,
+							     0, 0, 0, 0, spi);
+			}
+			last_ret = ret;
+			continue;
+		}
+		if (ret < 0) {
+			printk("xen_smoke: domctl/bind_unbind_pt_irq: FAIL bind_ret=%d "
+			       "domid=%u machine_irq=%u spi=%u\n",
+			       ret, domid, machine_irq, spi);
+			if (restore_domid != DOMID_INVALID) {
+				(void)xen_domctl_bind_pt_irq(restore_domid, machine_irq,
+							     PT_IRQ_TYPE_SPI,
+							     0, 0, 0, 0, spi);
+			}
+			return ret;
+		}
+
+		printk("xen_smoke: domctl/bind_unbind_pt_irq: unbind domid=%u "
+		       "machine_irq=%u spi=%u\n",
+		       domid, machine_irq, spi);
+		ret = xen_domctl_unbind_pt_irq(domid, machine_irq, PT_IRQ_TYPE_SPI,
+					       0, 0, 0, 0, spi);
+		if (ret < 0) {
+			if (ret == -XEN_ERRNO_EBUSY) {
+				printk("xen_smoke: domctl/bind_unbind_pt_irq: PASS domid=%u "
+				       "machine_irq=%u spi=%u candidate=%d "
+				       "unbind_ret=%d reason=live_domain_unbind_busy\n",
+				       domid, machine_irq, spi, i, ret);
+				return 0;
+			}
+			printk("xen_smoke: domctl/bind_unbind_pt_irq: FAIL unbind_ret=%d "
+			       "domid=%u machine_irq=%u spi=%u\n",
+			       ret, domid, machine_irq, spi);
+			if (restore_domid != DOMID_INVALID) {
+				(void)xen_domctl_bind_pt_irq(restore_domid, machine_irq,
+							     PT_IRQ_TYPE_SPI,
+							     0, 0, 0, 0, spi);
+			}
+			return ret;
+		}
+
+		if (restore_domid != DOMID_INVALID) {
+			ret = xen_domctl_bind_pt_irq(restore_domid, machine_irq, PT_IRQ_TYPE_SPI,
+						     0, 0, 0, 0, spi);
+			if (ret < 0) {
+				printk("xen_smoke: domctl/bind_unbind_pt_irq: FAIL "
+				       "restore_owner_ret=%d owner=%u machine_irq=%u spi=%u\n",
+				       ret, restore_domid, machine_irq, spi);
+				return ret;
+			}
+		}
+
+		printk("xen_smoke: domctl/bind_unbind_pt_irq: PASS domid=%u "
+		       "machine_irq=%u spi=%u candidate=%d restored_owner=%u\n",
+		       domid, machine_irq, spi, i, restore_domid);
+
+		return 0;
+	}
+
+	printk("xen_smoke: domctl/bind_unbind_pt_irq: FAIL no_free_candidate "
+	       "last_ret=%d\n",
+	       last_ret);
+	return last_ret ? last_ret : -ENOENT;
 }
 
 int main(void)
@@ -364,7 +528,7 @@ int main(void)
 		goto fail;
 	}
 
-	ret = check_domctl_unbind_pt_irq();
+	ret = check_domctl_bind_unbind_pt_irq();
 	if (ret < 0) {
 		goto fail;
 	}
