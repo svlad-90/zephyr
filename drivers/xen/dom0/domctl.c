@@ -224,19 +224,34 @@ int xen_domctl_memory_mapping(int domid, uint64_t first_gfn, uint64_t first_mfn,
 	return ret;
 }
 
-int xen_domctl_assign_dt_device(int domid, char *dtdev_path)
+int xen_domctl_assign_device(int domid, const struct xen_domctl_assign_device *device)
 {
-	xen_domctl_t domctl = {
+	xen_domctl_t domctl;
+
+	if (!device) {
+		return -EINVAL;
+	}
+
+	domctl = (xen_domctl_t) {
 		.domain = domid,
 		.cmd = XEN_DOMCTL_assign_device,
-		.u.assign_device.flags = 0,
-		.u.assign_device.dev = XEN_DOMCTL_DEV_DT,
-		.u.assign_device.u.dt.size = strlen(dtdev_path),
+		.u.assign_device = *device,
 	};
 
-	set_xen_guest_handle(domctl.u.assign_device.u.dt.path, dtdev_path);
-
 	return do_domctl(&domctl);
+}
+
+int xen_domctl_assign_dt_device(int domid, char *dtdev_path)
+{
+	struct xen_domctl_assign_device device = {
+		.flags = 0,
+		.dev = XEN_DOMCTL_DEV_DT,
+		.u.dt.size = strlen(dtdev_path),
+	};
+
+	set_xen_guest_handle(device.u.dt.path, dtdev_path);
+
+	return xen_domctl_assign_device(domid, &device);
 
 }
 

@@ -168,6 +168,19 @@ int xen_domctl_memory_mapping(int domid, uint64_t first_gfn, uint64_t first_mfn,
 /**
  * @brief Assign a device to a guest. Sets up IOMMU structures.
  *
+ * The device descriptor uses the public Xen assign-device ABI structure.
+ *
+ * @param domid The ID of the domain to which the device is to be assigned.
+ * @param device Xen device descriptor to assign.
+ * @retval 0 on success.
+ * @retval -errno on failure.
+ */
+int xen_domctl_assign_device(int domid,
+			     const struct xen_domctl_assign_device *device);
+
+/**
+ * @brief Assign a device tree node to a guest. Sets up IOMMU structures.
+ *
  * @param domid The ID of the domain to which the device is to be assigned.
  * @param dtdev_path The path of the device tree device to be assigned.
  * @retval 0 on success.
