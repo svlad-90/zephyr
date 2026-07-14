@@ -39,6 +39,13 @@
 			enable-method = "psci";
 			reg = <0x00>;
 		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,armv8";
+			enable-method = "psci";
+			reg = <0x01>;
+		};
 	};
 
 	psci {

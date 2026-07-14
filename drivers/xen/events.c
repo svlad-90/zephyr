@@ -8,6 +8,7 @@
 #include <zephyr/arch/arm64/hypercall.h>
 #include <zephyr/xen/public/xen.h>
 #include <zephyr/xen/public/event_channel.h>
+#include <zephyr/xen/generic.h>
 #include <zephyr/xen/events.h>
 #include <zephyr/sys/barrier.h>
 
@@ -17,6 +18,20 @@
 #include <zephyr/irq.h>
 
 LOG_MODULE_REGISTER(xen_events);
+
+/*
+ * The Zephyr-tree Xen public headers do not ship vcpu.h, so declare the minimal
+ * VCPUOP_register_vcpu_info ABI locally (matches Xen public/vcpu.h). This lets a
+ * secondary vCPU tell Xen where to place its vcpu_info structure.
+ */
+#ifndef VCPUOP_register_vcpu_info
+#define VCPUOP_register_vcpu_info 10
+struct vcpu_register_vcpu_info {
+	uint64_t mfn;    /* mfn of page to place vcpu_info */
+	uint32_t offset; /* offset within page */
+	uint32_t rsvd;   /* unused */
+};
+#endif
 
 extern shared_info_t *HYPERVISOR_shared_info;
 
@@ -219,6 +234,33 @@ static void process_event(evtchn_port_t port)
 	channel.cb(channel.priv);
 }
 
+/*
+ * Per-CPU vcpu_info.
+ *
+ * On arm64 the shared_info page only holds a single vcpu_info slot (see
+ * XEN_LEGACY_MAX_VCPUS == 1 in arch-arm.h), which Xen assigns to the boot CPU.
+ * Every secondary CPU must register its own vcpu_info via VCPUOP_register_vcpu_info,
+ * otherwise Xen has nowhere to deliver that vCPU's event-channel upcall state and
+ * events bound to it are never seen by the guest. The backing storage lives in a
+ * page-aligned array so no vcpu_info struct straddles a page boundary.
+ */
+#if defined(CONFIG_SMP) && (CONFIG_MP_MAX_NUM_CPUS > 1)
+static vcpu_info_t secondary_vcpu_info[CONFIG_MP_MAX_NUM_CPUS]
+	__aligned(XEN_PAGE_SIZE);
+#endif
+
+static inline vcpu_info_t *this_cpu_vcpu_info(void)
+{
+#if defined(CONFIG_SMP) && (CONFIG_MP_MAX_NUM_CPUS > 1)
+	unsigned int cpu = arch_curr_cpu()->id;
+
+	if (cpu != 0) {
+		return &secondary_vcpu_info[cpu];
+	}
+#endif
+	return &HYPERVISOR_shared_info->vcpu_info[0];
+}
+
 static void events_isr(void *data)
 {
 	ARG_UNUSED(data);
@@ -230,8 +272,8 @@ static void events_isr(void *data)
 
 	evtchn_port_t port; /* absolute event index */
 
-	/* TODO: SMP? XEN_LEGACY_MAX_VCPUS == 1*/
-	vcpu_info_t *vcpu = &HYPERVISOR_shared_info->vcpu_info[0];
+	/* Use the vcpu_info of the CPU this ISR is running on (SMP-safe). */
+	vcpu_info_t *vcpu = this_cpu_vcpu_info();
 
 	/*
 	 * Need to set it to 0 /before/ checking for pending work, thus
@@ -287,4 +329,51 @@ int xen_events_init(void)
 
 	LOG_INF("%s: events inited\n", __func__);
 	return 0;
+}
+
+/*
+ * Per-CPU bring-up of the Xen event-channel path on a secondary CPU.
+ *
+ * Two things are needed, neither of which xen_events_init() does for anything
+ * other than the boot CPU:
+ *
+ *   1. Register a vcpu_info for this vCPU (arm64 shared_info only has vcpu0's),
+ *      so Xen has a place to deliver this vCPU's upcall pending state.
+ *   2. Enable the event-channel PPI on this CPU's redistributor, since it is a
+ *      per-CPU interrupt and irq_enable() in xen_events_init() only affected
+ *      the boot CPU.
+ */
+void xen_evtchn_per_cpu_init(void)
+{
+#if defined(CONFIG_SMP) && (CONFIG_MP_MAX_NUM_CPUS > 1)
+	unsigned int cpu = arch_curr_cpu()->id;
+
+	if (cpu != 0) {
+		vcpu_info_t *vi = &secondary_vcpu_info[cpu];
+		struct vcpu_register_vcpu_info reg;
+		int rc;
+
+		/*
+		 * Fresh vcpu_info (BSS-zeroed). On arm64 there is no PV upcall
+		 * mask (see struct vcpu_info); delivery is gated by the GIC PPI
+		 * and the per-event-channel masks, so we only need to hand Xen
+		 * the location of this vCPU's vcpu_info.
+		 */
+		vi->evtchn_upcall_pending = 0;
+		vi->evtchn_pending_sel = 0;
+
+		reg.mfn = xen_virt_to_gfn(vi);
+		reg.offset = (uint32_t)((uintptr_t)vi & (XEN_PAGE_SIZE - 1));
+		reg.rsvd = 0;
+
+		rc = HYPERVISOR_vcpu_op(VCPUOP_register_vcpu_info, cpu, &reg);
+		if (rc) {
+			LOG_ERR("%s: register vcpu_info for CPU %u failed: %d\n",
+				__func__, cpu, rc);
+			return;
+		}
+	}
+#endif
+
+	irq_enable(DT_IRQ_BY_IDX(DT_INST(0, xen_xen), 0, irq));
 }

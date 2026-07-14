@@ -127,4 +127,13 @@ void clear_event_channel(evtchn_port_t port);
  */
 int xen_events_init(void);
 
+/**
+ * Enable the Xen event-channel interrupt on the calling CPU.
+ *
+ * The event IRQ is a per-CPU PPI, so it must be enabled separately on each
+ * secondary CPU brought up under SMP; xen_events_init() only enables it on
+ * the boot CPU.
+ */
+void xen_evtchn_per_cpu_init(void);
+
 #endif /* __XEN_EVENTS_H__ */
