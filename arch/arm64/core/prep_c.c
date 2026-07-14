@@ -24,6 +24,10 @@
 
 __weak void z_arm64_mm_init(bool is_primary_core) { }
 
+#ifdef CONFIG_SAVE_XEN_FDT
+extern void xen_copy_fdt(void);
+#endif
+
 /**
  *
  * @brief Prepare to and run C code
@@ -40,6 +44,9 @@ FUNC_NORETURN void z_prep_c(void)
 
 	arch_bss_zero();
 	arch_data_copy();
+#ifdef CONFIG_SAVE_XEN_FDT
+	xen_copy_fdt();
+#endif /* CONFIG_SAVE_XEN_FDT */
 #ifdef CONFIG_ARM64_SAFE_EXCEPTION_STACK
 	/* After bss clean, _kernel.cpus is in bss section */
 	z_arm64_safe_exception_stack_init();

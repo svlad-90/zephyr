@@ -122,6 +122,27 @@ resetwait:
 	/* Mask all exceptions */
 	msr	DAIFSet, #0xf
 
+#ifdef CONFIG_SAVE_XEN_FDT
+	/*
+	 * Only the boot CPU is handed the guest FDT pointer in x0. A CPU brought
+	 * up later via PSCI CPU_ON is entered with the context-id (0) in x0, so
+	 * skip the save on secondaries: otherwise we dereference a bogus pointer
+	 * (address 0x4) here, before the vector table and MMU are set up, and the
+	 * resulting abort vectors to the still-zero VBAR_EL1 (offset 0x200).
+	 */
+	cbz	x0, .Lskip_xen_fdt
+	mov x1, x0
+	ldr x0, =xen_fdt_addr
+	str x1, [x0]
+
+	/* Skip 4 bytes from blob start to get fdt size */
+	add x1, x1, #0x4
+	ldr x0, =xen_fdt_size
+	ldr w2, [x1]
+	str w2, [x0]
+.Lskip_xen_fdt:
+#endif /* CONFIG_SAVE_XEN_FDT */
+
 #if CONFIG_MP_MAX_NUM_CPUS > 1
 
 	/*
