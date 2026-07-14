@@ -178,6 +178,20 @@ int xen_domctl_assign_dt_device(int domid, char *dtdev_path);
 /**
  * @brief Deassign a device from a guest domain.
  *
+ * The device descriptor uses the same ABI structure as
+ * ``XEN_DOMCTL_assign_device``.
+ *
+ * @param domid The ID of the domain from which the device should be deassigned.
+ * @param device Xen device descriptor to deassign.
+ * @retval 0 on success.
+ * @retval -errno on failure.
+ */
+int xen_domctl_deassign_device(int domid,
+			       const struct xen_domctl_assign_device *device);
+
+/**
+ * @brief Deassign a device from a guest domain.
+ *
  * @param domid The ID of the domain from which the device should be deassigned.
  * @param dtdev_path The path of the device tree device to be deassigned.
  * @retval 0 on success.
