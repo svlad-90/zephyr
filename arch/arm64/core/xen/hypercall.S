@@ -23,6 +23,7 @@ HYPERCALL(sched_op);
 HYPERCALL(event_channel_op);
 HYPERCALL(hvm_op);
 HYPERCALL(memory_op);
+HYPERCALL(vcpu_op);
 HYPERCALL(dm_op);
 HYPERCALL(xen_version);
 
