@@ -45,6 +45,7 @@ following board configuration variants:
 
 - ``xenvm`` selects GICv2
 - ``xenvm//gicv3`` selects GICv3
+- ``xenvm//smp`` selects GICv2 and enables two virtual CPUs
 
 CPU Core type
 -------------
@@ -94,6 +95,12 @@ guest, for example, with the :zephyr:code-sample:`synchronization` sample:
 
    $ west build -b xenvm//gicv3 samples/synchronization
 
+- if you want to run the sample with two virtual CPUs:
+
+.. code-block::
+
+   $ west build -b xenvm//smp samples/synchronization
+
 This will build an image with the synchronization sample app. Next, you need to
 create guest configuration file :code:`zephyr.conf`. There is example:
 
@@ -108,6 +115,14 @@ create guest configuration file :code:`zephyr.conf`. There is example:
 
 When using ``xenvm//gicv3`` configuration, you need to remove the ``gic_version``
 parameter or set it to ``"v3"``.
+
+When using ``xenvm//smp``, set :code:`vcpus=2` in the Xen guest configuration.
+Xen event channels use a per-CPU interrupt and per-vCPU event state. Zephyr
+therefore registers event-channel state for secondary virtual CPUs and enables
+the event-channel interrupt on each CPU during bring-up. The driver keeps the
+shared Xen event bitmaps and its callback table safe for concurrent interrupt
+handling, but it does not implement a Linux-style event-channel affinity model;
+channel placement remains controlled by Xen.
 
 You need to upload both :code:`zephyr.bin` and :code:`zephyr.conf` to your Dom0
 and then you can run Zephyr by issuing
