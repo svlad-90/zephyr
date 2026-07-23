@@ -56,6 +56,21 @@ config XEN_SYSCTL_INTERFACE_VERSION
 	  the hypervisor. The default value is the latest version supported
 	  by the kernel.
 
+config SAVE_XEN_FDT
+	bool "Save Xen device tree blob on early boot"
+	depends on XEN
+	help
+	  Copy the Xen-provided guest device tree blob (passed in x0 at boot)
+	  into a static buffer early in reset so it can be parsed later.
+
+config XEN_FDT_MAX_SIZE
+	hex "Maximum Xen device tree blob size"
+	default 0x8000
+	depends on SAVE_XEN_FDT
+	help
+	  Maximum number of bytes reserved for the Xen-provided guest device
+	  tree blob saved during early boot.
+
 config XEN_DOMCTL_XENTROOPS_ARCH_VGSX_OSID
 	bool "OSID used by virtual GSX device"
 	default n
