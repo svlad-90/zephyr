@@ -53,6 +53,43 @@ int xendom_add_to_physmap_batch(int domid, int foreign_domid,
 int xendom_remove_from_physmap(int domid, xen_pfn_t gpfn);
 
 /**
+ * Increase a Xen domain's memory reservation.
+ *
+ * This asks Xen to allocate extents for the domain. On success, Xen writes the
+ * allocated machine frame bases into extent_start.
+ *
+ * @param domid		domain id whose reservation will be increased. For
+ *			unprivileged callers this should be DOMID_SELF.
+ * @param extent_order	size/alignment of each extent (size is 2^extent_order).
+ * @param nr_extents	number of extents requested.
+ * @param mem_flags	XENMEMF_* flags, or 0 when no extra flags are needed.
+ * @param extent_start	output array for allocated machine frame bases.
+ * @return		number of allocated extents on success, negative errno on
+ *			error.
+ */
+int xendom_increase_reservation(int domid, unsigned int extent_order,
+				unsigned int nr_extents, unsigned int mem_flags,
+				xen_pfn_t *extent_start);
+
+/**
+ * Decrease a Xen domain's memory reservation.
+ *
+ * This asks Xen to free guest frame extents from the domain reservation.
+ *
+ * @param domid		domain id whose reservation will be decreased. For
+ *			unprivileged callers this should be DOMID_SELF.
+ * @param extent_order	size/alignment of each extent (size is 2^extent_order).
+ * @param nr_extents	number of extents to free.
+ * @param mem_flags	XENMEMF_* flags, or 0 when no extra flags are needed.
+ * @param extent_start	input array of guest frame bases to free.
+ * @return		number of freed extents on success, negative errno on
+ *			error.
+ */
+int xendom_decrease_reservation(int domid, unsigned int extent_order,
+				unsigned int nr_extents, unsigned int mem_flags,
+				xen_pfn_t *extent_start);
+
+/**
  * Populate specified Xen domain page frames with memory.
  *
  * @param domid		domain id, where mapping will be added. For unprivileged
