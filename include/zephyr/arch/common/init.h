@@ -6,6 +6,9 @@
 #ifndef ZEPHYR_ARCH_COMMON_INIT_H_
 #define ZEPHYR_ARCH_COMMON_INIT_H_
 
+#include <zephyr/toolchain.h>
+#include <stddef.h>
+
 FUNC_NORETURN void z_cstart(void);
 
 /* Early boot functions */
