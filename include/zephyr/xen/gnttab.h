@@ -93,6 +93,19 @@ int gnttab_map_refs(struct gnttab_map_grant_ref *map_ops, unsigned int count);
 int gnttab_unmap_refs(struct gnttab_unmap_grant_ref *unmap_ops, unsigned int count);
 
 /*
+ * Query current and maximum grant table size for a domain.
+ *
+ * @param dom - domain whose grant table size should be queried. Use
+ *              DOMID_SELF for the calling domain.
+ * @param nr_frames - storage where Xen writes the current frame count.
+ * @param max_nr_frames - storage where Xen writes the maximum frame count.
+ * @param status - storage where Xen writes the GNTST_* operation status.
+ * @return zero on hypercall success, negative errno on failure
+ */
+int gnttab_query_size(domid_t dom, uint32_t *nr_frames, uint32_t *max_nr_frames,
+		      int16_t *status);
+
+/*
  * Convert grant ref status codes (GNTST_*) to text messages.
  *
  * @param status - negative GNTST_* code, that needs to be converted
