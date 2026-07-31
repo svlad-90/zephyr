@@ -411,7 +411,7 @@ static unsigned long gnttab_get_max_frames(void)
 		.dom = DOMID_SELF,
 	};
 
-	ret = HYPERVISOR_grant_table_op(GNTTABOP_query_size, &q, 1);
+	ret = gnttab_query_size(&q);
 	if ((ret < 0) || (q.status != GNTST_okay)) {
 		return LEGACY_MAX_GNT_FRAMES_SUPPORTED;
 	}
