@@ -93,6 +93,25 @@ int gnttab_map_refs(struct gnttab_map_grant_ref *map_ops, unsigned int count);
 int gnttab_unmap_refs(struct gnttab_unmap_grant_ref *unmap_ops, unsigned int count);
 
 /*
+ * Set up grant table frames for a domain.
+ *
+ * @param setup - prepared GNTTABOP_setup_table request. The frame_list guest
+ *                handle must point to storage for setup->nr_frames frame
+ *                numbers. Xen writes operation status to setup->status.
+ * @return zero on hypercall success, negative errno on failure
+ */
+int gnttab_setup_table(struct gnttab_setup_table *setup);
+
+/*
+ * Query current and maximum grant table size for a domain.
+ *
+ * @param query - prepared GNTTABOP_query_size request. Xen writes nr_frames,
+ *                max_nr_frames, and operation status into this structure.
+ * @return zero on hypercall success, negative errno on failure
+ */
+int gnttab_query_size(struct gnttab_query_size *query);
+
+/*
  * Convert grant ref status codes (GNTST_*) to text messages.
  *
  * @param status - negative GNTST_* code, that needs to be converted
