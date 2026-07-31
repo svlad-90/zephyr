@@ -372,6 +372,27 @@ int gnttab_unmap_refs(struct gnttab_unmap_grant_ref *unmap_ops, unsigned int cou
 	return HYPERVISOR_grant_table_op(GNTTABOP_unmap_grant_ref, unmap_ops, count);
 }
 
+int gnttab_setup_table(domid_t dom, uint32_t nr_frames, xen_pfn_t *frame_list,
+		       int16_t *status)
+{
+	struct gnttab_setup_table setup = {
+		.dom = dom,
+		.nr_frames = nr_frames,
+	};
+	int ret;
+
+	if (!frame_list || !status) {
+		return -EINVAL;
+	}
+
+	set_xen_guest_handle(setup.frame_list, frame_list);
+
+	ret = HYPERVISOR_grant_table_op(GNTTABOP_setup_table, &setup, 1);
+	*status = setup.status;
+
+	return ret;
+}
+
 int gnttab_query_size(domid_t dom, uint32_t *nr_frames, uint32_t *max_nr_frames,
 		      int16_t *status)
 {

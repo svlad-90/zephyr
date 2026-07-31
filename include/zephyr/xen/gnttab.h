@@ -93,6 +93,19 @@ int gnttab_map_refs(struct gnttab_map_grant_ref *map_ops, unsigned int count);
 int gnttab_unmap_refs(struct gnttab_unmap_grant_ref *unmap_ops, unsigned int count);
 
 /*
+ * Set up grant table frames for a domain.
+ *
+ * @param dom - domain whose grant table should be set up. Use DOMID_SELF for
+ *              the calling domain.
+ * @param nr_frames - minimum number of grant table frames requested.
+ * @param frame_list - storage where Xen writes @p nr_frames frame numbers.
+ * @param status - storage where Xen writes the GNTST_* operation status.
+ * @return zero on hypercall success, negative errno on failure
+ */
+int gnttab_setup_table(domid_t dom, uint32_t nr_frames, xen_pfn_t *frame_list,
+		       int16_t *status);
+
+/*
  * Query current and maximum grant table size for a domain.
  *
  * @param dom - domain whose grant table size should be queried. Use
