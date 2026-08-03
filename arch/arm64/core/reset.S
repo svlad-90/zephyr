@@ -123,6 +123,15 @@ resetwait:
 	msr	DAIFSet, #0xf
 
 #ifdef CONFIG_SAVE_XEN_FDT
+	/*
+	 * Only the boot CPU is handed the guest FDT pointer in x0. A CPU brought
+	 * up later via PSCI CPU_ON receives a caller-provided context ID in x0
+	 * instead, so identify CPU0 before treating x0 as an FDT address.
+	 */
+#if CONFIG_MP_MAX_NUM_CPUS > 1
+	get_cpu_logic_id	x1, x2, x3, x4	//x1: MPID, x2: logic id
+	cbnz	x2, .Lskip_xen_fdt
+#endif
 	mov	x1, x0
 	ldr	x0, =z_arm64_xen_fdt_addr
 	str	x1, [x0]
@@ -132,6 +141,7 @@ resetwait:
 	ldr	x0, =z_arm64_xen_fdt_size
 	ldr	w2, [x1]
 	str	w2, [x0]
+.Lskip_xen_fdt:
 #endif /* CONFIG_SAVE_XEN_FDT */
 
 #if CONFIG_MP_MAX_NUM_CPUS > 1
