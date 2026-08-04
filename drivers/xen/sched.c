@@ -8,6 +8,7 @@
 #include <zephyr/xen/sched.h>
 
 #include <errno.h>
+#include <stddef.h>
 
 int xen_sched_yield(void)
 {
