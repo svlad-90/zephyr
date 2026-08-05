@@ -22,12 +22,6 @@
 
 typedef void (*evtchn_cb_t)(void *priv);
 
-struct event_channel_handle {
-	evtchn_cb_t cb;
-	void *priv;
-};
-typedef struct event_channel_handle evtchn_handle_t;
-
 /*
  * Following functions just wrap Xen hypercalls, detailed description
  * of parameters and return values are located in include/xen/public/event_channel.h
@@ -74,6 +68,15 @@ int bind_interdomain_event_channel(domid_t remote_dom, evtchn_port_t remote_port
 
 /**
  * Bind user-defined handler to specified event-channel
+ *
+ * To reconfigure an active channel, callers should mask the port, drain or
+ * clear its pending state, update the Xen binding and/or callback, and then
+ * unmask the port again.
+ *
+ * The driver takes a consistent callback snapshot before dispatching an event.
+ * Replacing or unbinding a handler while another CPU is already executing a
+ * previously snapped callback is not a supported synchronization mechanism for
+ * the callback's private data lifetime.
  *
  * @param port event channel number
  * @param cb pointer to event channel handler
