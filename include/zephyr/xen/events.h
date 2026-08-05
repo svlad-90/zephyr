@@ -32,6 +32,19 @@ int evtchn_set_priority(evtchn_port_t port, uint32_t priority);
 int notify_evtchn(evtchn_port_t port);
 
 /**
+ * Set the Xen vCPU that should receive an event channel and update the
+ * driver's dispatch ownership cache for that port.
+ *
+ * Concurrent mask, unmask, and affinity changes for the same port must be
+ * serialized by the caller.
+ *
+ * @param port event channel number
+ * @param vcpu Xen vCPU id that should receive the port's upcall
+ * @return 0 on success, or a negative errno code on failure.
+ */
+int set_event_channel_affinity(evtchn_port_t port, uint32_t vcpu);
+
+/**
  * Allocate event-channel between caller and remote domain
  *
  * @param remote_dom remote domain domid
@@ -106,6 +119,10 @@ int get_missed_events(evtchn_port_t port);
 
 /**
  * Disable event processing on specified port.
+ *
+ * Concurrent mask, unmask, and affinity changes for the same port must be
+ * serialized by the caller.
+ *
  * @param port event channel number
  * @return 0 on success, or a negative errno code on failure.
  */
@@ -113,6 +130,10 @@ int mask_event_channel(evtchn_port_t port);
 
 /**
  * Enable event processing on specified port.
+ *
+ * Concurrent mask, unmask, and affinity changes for the same port must be
+ * serialized by the caller.
+ *
  * @param port event channel number
  * @return 0 on success, or a negative errno code on failure.
  */
