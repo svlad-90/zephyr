@@ -50,6 +50,19 @@ static struct evtchn_handle event_channels[EVTCHN_2L_NR_CHANNELS];
 static struct k_spinlock event_state_lock;
 
 #define EVTCHN_WORD_BITS (8 * sizeof(xen_ulong_t))
+#define EVTCHN_WORDS (EVTCHN_2L_NR_CHANNELS / EVTCHN_WORD_BITS)
+
+/*
+ * Driver-side port ownership cache.
+ *
+ * Xen's evtchn_pending_sel is per-vCPU, but it selects a word in the
+ * domain-wide evtchn_pending bitmap. If ports for different vCPUs share that
+ * word, an ISR running on one CPU must not drain the other CPU's ports just
+ * because their pending bits live in the same word.
+ *
+ * Protected by event_state_lock after event-channel interrupts are enabled.
+ */
+static xen_ulong_t event_channel_cpu_mask[CONFIG_MP_MAX_NUM_CPUS][EVTCHN_WORDS];
 
 /* Default handler for a port that has no Zephyr callback bound. */
 static void empty_callback(void *data)
@@ -65,6 +78,14 @@ static xen_ulong_t shared_event_bit(evtchn_port_t port)
 static xen_ulong_t shared_event_word(const xen_ulong_t *bitmap, uint32_t word)
 {
 	return __atomic_load_n(&bitmap[word], __ATOMIC_SEQ_CST);
+}
+
+static bool shared_event_bit_is_set(const xen_ulong_t *bitmap, evtchn_port_t port)
+{
+	uint32_t word = port / EVTCHN_WORD_BITS;
+	xen_ulong_t bit = shared_event_bit(port);
+
+	return (shared_event_word(bitmap, word) & bit) != 0;
 }
 
 static void set_shared_event_bit(xen_ulong_t *bitmap, evtchn_port_t port)
@@ -168,6 +189,24 @@ int notify_evtchn(evtchn_port_t port)
 }
 
 /*
+ * Move the port in the driver-side ownership cache. Callers must either hold
+ * event_state_lock or run before event-channel interrupts are enabled.
+ */
+static void set_event_channel_cpu(evtchn_port_t port, uint32_t vcpu)
+{
+	uint32_t old_vcpu;
+	uint32_t word = port / EVTCHN_WORD_BITS;
+	uint32_t bit = port % EVTCHN_WORD_BITS;
+	xen_ulong_t bit_mask = ((xen_ulong_t)1) << bit;
+
+	for (old_vcpu = 0; old_vcpu < CONFIG_MP_MAX_NUM_CPUS; old_vcpu++) {
+		event_channel_cpu_mask[old_vcpu][word] &= ~bit_mask;
+	}
+
+	event_channel_cpu_mask[vcpu][word] |= bit_mask;
+}
+
+/*
  * Reset Zephyr-owned state for an unused port. Callers must either hold
  * event_state_lock or run before event-channel interrupts are enabled.
  */
@@ -176,6 +215,65 @@ static void reset_event_channel_state(evtchn_port_t port)
 	event_channels[port].cb = empty_callback;
 	event_channels[port].priv = NULL;
 	event_channels[port].missed = false;
+	set_event_channel_cpu(port, 0);
+}
+
+int set_event_channel_affinity(evtchn_port_t port, uint32_t vcpu)
+{
+	shared_info_t *s = HYPERVISOR_shared_info;
+	struct evtchn_bind_vcpu bind = {
+		.port = port,
+		.vcpu = vcpu,
+	};
+	struct evtchn_unmask unmask = {
+		.port = port,
+	};
+	k_spinlock_key_t key;
+	bool was_masked;
+	int rc;
+
+	__ASSERT(port < EVTCHN_2L_NR_CHANNELS,
+		"%s: trying to set affinity for invalid evtchn #%u\n",
+		__func__, port);
+	__ASSERT(vcpu < CONFIG_MP_MAX_NUM_CPUS,
+		"%s: trying to set affinity for evtchn #%u to invalid vCPU %u\n",
+		__func__, port, vcpu);
+
+	/*
+	 * Keep the port masked while Xen and the driver's dispatch cache move
+	 * to the new vCPU. Otherwise Xen can set the new vCPU's pending
+	 * selector before event_channel_cpu_mask[] lets that CPU drain the
+	 * port, leaving the event pending without a matching selector kick.
+	 */
+	key = k_spin_lock(&event_state_lock);
+	was_masked = shared_event_bit_is_set(s->evtchn_mask, port);
+	set_shared_event_bit(s->evtchn_mask, port);
+	k_spin_unlock(&event_state_lock, key);
+
+	rc = HYPERVISOR_event_channel_op(EVTCHNOP_bind_vcpu, &bind);
+	if (rc != 0) {
+		if (!was_masked) {
+			int unmask_rc;
+
+			unmask_rc = HYPERVISOR_event_channel_op(EVTCHNOP_unmask,
+								&unmask);
+			if (unmask_rc != 0) {
+				LOG_ERR("%s: restore evtchn #%u unmask failed: %d\n",
+					__func__, port, unmask_rc);
+			}
+		}
+		return rc;
+	}
+
+	key = k_spin_lock(&event_state_lock);
+	set_event_channel_cpu(port, vcpu);
+	k_spin_unlock(&event_state_lock, key);
+
+	if (!was_masked) {
+		return HYPERVISOR_event_channel_op(EVTCHNOP_unmask, &unmask);
+	}
+
+	return 0;
 }
 
 int bind_event_channel(evtchn_port_t port, evtchn_cb_t cb, void *data)
@@ -333,12 +431,15 @@ int evtchn_close(evtchn_port_t port)
 static inline xen_ulong_t get_pending_events(xen_ulong_t pos)
 {
 	shared_info_t *s = HYPERVISOR_shared_info;
+	uint32_t cpu = arch_curr_cpu()->id;
 	k_spinlock_key_t key;
+	xen_ulong_t cpu_mask;
 	xen_ulong_t events;
 
 	key = k_spin_lock(&event_state_lock);
+	cpu_mask = event_channel_cpu_mask[cpu][pos];
 	events = shared_event_word(s->evtchn_pending, pos) &
-		 ~shared_event_word(s->evtchn_mask, pos);
+		 ~shared_event_word(s->evtchn_mask, pos) & cpu_mask;
 	k_spin_unlock(&event_state_lock, key);
 
 	return events;
