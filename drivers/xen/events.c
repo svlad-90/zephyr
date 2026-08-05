@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define DT_DRV_COMPAT xen_xen
+
 #include <xen/public/xen.h>
 #include <xen/public/event_channel.h>
 
@@ -280,11 +282,15 @@ int xen_events_init(void)
 		events_missed[i] = false;
 	}
 
-	IRQ_CONNECT(DT_IRQ_BY_IDX(DT_INST(0, xen_xen), 0, irq),
-		DT_IRQ_BY_IDX(DT_INST(0, xen_xen), 0, priority), events_isr,
-		NULL, DT_IRQ_BY_IDX(DT_INST(0, xen_xen), 0, flags));
+	/*
+	 * DT_DRV_COMPAT selects the xen,xen devicetree compatible. Instance 0
+	 * is the first xen,xen node, and IRQ index 0 is its event-channel IRQ.
+	 */
+	IRQ_CONNECT(DT_INST_IRQ_BY_IDX(0, 0, irq),
+		DT_INST_IRQ_BY_IDX(0, 0, priority), events_isr,
+		NULL, DT_INST_IRQ_BY_IDX(0, 0, flags));
 
-	irq_enable(DT_IRQ_BY_IDX(DT_INST(0, xen_xen), 0, irq));
+	irq_enable(DT_INST_IRQ_BY_IDX(0, 0, irq));
 
 	LOG_INF("%s: events inited\n", __func__);
 	return 0;
