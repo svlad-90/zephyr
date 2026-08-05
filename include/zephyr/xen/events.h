@@ -141,4 +141,12 @@ void clear_event_channel(evtchn_port_t port);
  */
 int xen_events_init(void);
 
+/**
+ * Set up Xen event-channel delivery on a secondary CPU.
+ *
+ * Secondary CPUs need their own registered vcpu_info storage and local PPI
+ * enable before they can receive event-channel callbacks.
+ */
+void xen_evtchn_secondary_cpu_init(void);
+
 #endif /* __XEN_EVENTS_H__ */
