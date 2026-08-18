@@ -22,12 +22,6 @@
 
 typedef void (*evtchn_cb_t)(void *priv);
 
-struct event_channel_handle {
-	evtchn_cb_t cb;
-	void *priv;
-};
-typedef struct event_channel_handle evtchn_handle_t;
-
 /*
  * Following functions just wrap Xen hypercalls, detailed description
  * of parameters and return values are located in include/xen/public/event_channel.h
