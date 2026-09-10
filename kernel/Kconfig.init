@@ -49,6 +49,22 @@ config SOC_PREP_HOOK
 	  A custom hook soc_prep_hook() is executed at the beginning of the
 	  c prep code (prep_c). soc_prep_hook() must be implemented by the SoC.
 
+config ARCH_HAS_FWARGS_EARLY_PARSE_HOOK
+	bool
+
+config FWARGS_EARLY_PARSE_HOOK
+	bool "Run early firmware argument parse hook"
+	depends on ARCH_HAS_FWARGS_EARLY_PARSE_HOOK
+	help
+	  Run an early hook that lets platform code parse architecture-provided
+	  firmware arguments before normal Zephyr initialization starts.
+
+	  A custom hook fwargs_early_parse_hook() is executed after the
+	  architecture has initialized RAM for C code, but before normal kernel
+	  and device initialization. The hook receives the saved firmware
+	  argument array and must be implemented by the platform code that
+	  selects this option.
+
 config SOC_EARLY_INIT_HOOK
 	bool "Run early SoC hook"
 	help

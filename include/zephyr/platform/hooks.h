@@ -6,6 +6,9 @@
 #ifndef ZEPHYR_INCLUDE_PLATFORM_PLATFORM_H_
 #define ZEPHYR_INCLUDE_PLATFORM_PLATFORM_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
 /**
  * @file
  * @brief SoC and Board hooks
@@ -55,6 +58,22 @@ void soc_reset_hook(void);
 void soc_prep_hook(void);
 #else
 #define soc_prep_hook() do { } while (0)
+#endif
+
+#if defined(CONFIG_FWARGS_EARLY_PARSE_HOOK) || defined(__DOXYGEN__)
+/**
+ * @brief Platform hook executed early to parse firmware arguments.
+ *
+ * This hook is implemented by platform-specific code that understands the
+ * architecture's firmware argument convention. It runs after RAM has been
+ * initialized for C code, but before normal kernel and device initialization.
+ *
+ * @param args Architecture-provided firmware argument array.
+ * @param argc Number of entries in @p args.
+ */
+void fwargs_early_parse_hook(const uintptr_t *args, size_t argc);
+#else
+#define fwargs_early_parse_hook(args, argc) do { } while (0)
 #endif
 
 #if defined(CONFIG_SOC_EARLY_INIT_HOOK) || defined(__DOXYGEN__)
