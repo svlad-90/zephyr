@@ -18,6 +18,39 @@ config XEN_STORE_COMMON
 	help
 	  Common code for handling xenstore.
 
+config XEN_STORE_CLIENT
+	bool "XenStore client"
+	depends on !XEN_STORE_SRV
+	select XEN_STORE_COMMON
+	select XEN_EVENTS
+	help
+	  Enable the XenStore client used by guest domains to access the
+	  XenStore service through the shared Xen ring.
+
+if XEN_STORE_CLIENT
+
+config XEN_STORE_CLIENT_WORKQ_PRIORITY
+	int "XenStore client response thread priority"
+	default 0
+	help
+	  Thread priority for processing XenStore responses.
+
+config XEN_STORE_CLIENT_WORKQ_STACK_SIZE
+	int "XenStore client response thread stack size"
+	default 32768
+	help
+	  Stack size for the XenStore response thread.
+
+config XEN_STORE_CLIENT_MAX_OUTSTANDING_REQUESTS
+	int "Maximum number of outstanding XenStore requests"
+	default 64
+	range 1 1024
+	help
+	  Maximum combined number of requests waiting for a response and
+	  timed-out request identifiers waiting for a late response.
+
+endif # XEN_STORE_CLIENT
+
 config XEN_STORE_SRV
 	bool "XenStore server"
 	select XEN_STORE_COMMON

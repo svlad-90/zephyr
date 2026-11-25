@@ -35,3 +35,8 @@ int xenlib_osal_thread_join(xenlib_osal_thread_t *thread,
 {
 	return k_thread_join(thread, timeout);
 }
+
+void xenlib_osal_thread_yield(void)
+{
+	k_yield();
+}

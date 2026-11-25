@@ -9,6 +9,7 @@ target_include_directories(XEN_STORE_COMMON INTERFACE
 zephyr_library()
 xenlib_include_zephyr_headers()
 zephyr_library_sources(
-  ${ZEPHYR_XENLIB_MODULE_DIR}/xenstore-common/src/xenstore_common.c)
+  ${ZEPHYR_XENLIB_MODULE_DIR}/xenstore-common/src/xenstore_common.c
+  ${ZEPHYR_XENLIB_MODULE_DIR}/xenstore-common/src/xs.c)
 zephyr_library_link_libraries(XEN_STORE_COMMON)
 zephyr_include_directories(${ZEPHYR_XENLIB_MODULE_DIR}/xenstore-common/include)

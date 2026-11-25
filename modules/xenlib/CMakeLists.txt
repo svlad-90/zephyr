@@ -17,6 +17,7 @@ if(CONFIG_XENLIB)
 
   add_subdirectory(osal)
   add_subdirectory_ifdef(CONFIG_XEN_STORE_COMMON xenstore-common)
+  add_subdirectory_ifdef(CONFIG_XEN_STORE_CLIENT xenstore-client)
   add_subdirectory_ifdef(CONFIG_XEN_STORE_SRV xenstore-srv)
   add_subdirectory_ifdef(CONFIG_XEN_DOMAIN_MANAGEMENT xen-dom-mgmt)
   add_subdirectory_ifdef(CONFIG_XEN_SHELL xen-shell-cmd)
