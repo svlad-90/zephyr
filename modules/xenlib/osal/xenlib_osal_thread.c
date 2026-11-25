@@ -30,6 +30,11 @@ int xenlib_osal_thread_name_set(xenlib_osal_tid_t thread,
 	return k_thread_name_set(thread, name);
 }
 
+xenlib_osal_tid_t xenlib_osal_thread_current(void)
+{
+	return k_current_get();
+}
+
 int xenlib_osal_thread_join(xenlib_osal_thread_t *thread,
 					xenlib_osal_timeout_t timeout)
 {

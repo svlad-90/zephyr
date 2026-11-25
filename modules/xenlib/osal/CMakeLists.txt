@@ -14,4 +14,5 @@ zephyr_library_sources(xenlib_osal_atomic.c
                        xenlib_osal_semaphore.c
                        xenlib_osal_thread.c
                        xenlib_osal_timepoint.c)
+zephyr_library_sources_ifdef(CONFIG_XEN_STORE_CLIENT xenlib_osal_refcount.c)
 zephyr_library_sources_ifdef(CONFIG_SHELL xenlib_osal_shell.c)
